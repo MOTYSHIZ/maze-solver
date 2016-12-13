@@ -17,14 +17,11 @@ namespace Maze_Solver
 
         static void Main(string[] args)
         {
-            Console.WriteLine(image.PhysicalDimension);
+            Console.WriteLine("Image size: " + image.PhysicalDimension);
 
             Point coord = findStart();
             findGoal();
-            findPath(coord.X, coord.Y);
-            points.Add(goal);
-            Console.WriteLine(points[0].ToString());
-            if (points.Contains(new Point(22, 417))) Console.WriteLine("Found you");
+            findPath(coord);
             image.Save(Environment.CurrentDirectory + @"\solved-mazes\maze1solved.png");
         }
          
@@ -126,63 +123,63 @@ namespace Maze_Solver
         }
 
         //The main path finding function.
-        static Color findPath(int currX, int currY)
+        static Color findPath(Point current)
         {
-            Color currentPixel = image.GetPixel(currX, currY);
+            Color currentPixel = image.GetPixel(current.X, current.Y);
             Color tempPixel;
+            Point tempPoint;
 
-            //If black/wall
+            //If black, Blue, Purple, or Green
             if (currentPixel == Color.FromArgb(255, 0, 0, 0)
                 || currentPixel == Color.FromArgb(255, 0, 0, 255)
                 || currentPixel == Color.FromArgb(255, 255, 0, 255)
                 || currentPixel == Color.FromArgb(255, 0, 255, 0)) return currentPixel;
 
-            //fillBlock(currX, currY, Color.FromArgb(255, 255, 0, 255));
-            image.SetPixel(currX, currY, Color.FromArgb(255, 255, 0, 255));
+            image.SetPixel(current.X, current.Y, Color.FromArgb(255, 255, 0, 255));
 
             //aStarEval(currX, currY);
 
             //up
-            if (currY - blockSize > 0 && checkIfClear(currX, currY, (int)Directions.UP))
+            if (current.Y - blockSize > 0 && checkIfClear(current.X, current.Y, (int)Directions.UP))
             {
-                tempPixel = findPath(currX, currY - blockSize);
+                tempPoint = new Point(current.X, current.Y - blockSize);
+                tempPixel = findPath(tempPoint);
                 if (tempPixel == Color.FromArgb(255, 0, 0, 255))
                 {
-                    //image.SetPixel(currX, currY, Color.FromArgb(255, 0, 255, 0));
-                    gManipulator.DrawLine(greenPen, currX, currY, currX, currY - blockSize);
+                    gManipulator.DrawLine(greenPen, current, tempPoint);
                     currentPixel = tempPixel;
                 }
             }
             //down
-            if (currY + blockSize < image.Height - 1 && checkIfClear(currX, currY, (int)Directions.DOWN))
+            if (current.Y + blockSize < image.Height - 1 && checkIfClear(current.X, current.Y, (int)Directions.DOWN))
             {
-                tempPixel = findPath(currX, currY + blockSize);
+                tempPoint = new Point(current.X, current.Y + blockSize);
+                tempPixel = findPath(tempPoint);
                 if (tempPixel == Color.FromArgb(255, 0, 0, 255))
                 {
-                    //image.SetPixel(currX, currY, Color.FromArgb(255, 0, 255, 0));
-                    gManipulator.DrawLine(greenPen, currX, currY, currX, currY + blockSize);
+                    gManipulator.DrawLine(greenPen, current, tempPoint);
                     currentPixel = tempPixel;
                 }
             }
             //left
-            if (currX - blockSize > 0 && checkIfClear(currX, currY, (int)Directions.LEFT))
+            if (current.X - blockSize > 0 && checkIfClear(current.X, current.Y, (int)Directions.LEFT))
             {
-                tempPixel = findPath(currX - blockSize, currY);
+                tempPoint = new Point(current.X - blockSize, current.Y);
+                tempPixel = findPath(tempPoint);
                 if (tempPixel == Color.FromArgb(255, 0, 0, 255))
                 {
-                    //image.SetPixel(currX, currY, Color.FromArgb(255, 0, 255, 0));
-                    gManipulator.DrawLine(greenPen, currX, currY, currX - blockSize, currY);
+                    gManipulator.DrawLine(greenPen, current, tempPoint);
                     currentPixel = tempPixel;
                 }
             }
             //right
-            if (currX + blockSize < image.Width && checkIfClear(currX, currY, (int)Directions.RIGHT))
+            if (current.X + blockSize < image.Width && checkIfClear(current.X, current.Y, (int)Directions.RIGHT))
             {
-                tempPixel = findPath(currX + blockSize, currY);
+                tempPoint = new Point(current.X + blockSize, current.Y);
+                tempPixel = findPath(tempPoint);
                 if (tempPixel == Color.FromArgb(255, 0, 0, 255))
                 {
-                    //image.SetPixel(currX, currY, Color.FromArgb(255, 0, 255, 0));
-                    gManipulator.DrawLine(greenPen, currX, currY, currX + blockSize, currY);
+                    gManipulator.DrawLine(greenPen, current, tempPoint);
                     currentPixel = tempPixel;
                 }
             }
