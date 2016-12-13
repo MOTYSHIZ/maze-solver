@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Drawing;
+using System.Collections;
 
 namespace Maze_Solver
 {
@@ -8,36 +9,28 @@ namespace Maze_Solver
         private static string path = Environment.CurrentDirectory + @"\input-mazes\maze1.png";
         private static Bitmap image = new Bitmap(path, true);
         private static Graphics gManipulator = Graphics.FromImage(image);
-        private static Pen greenPen = new Pen(Color.Green, blockSize);
-        private static Coordinates goal;
+        private static Pen greenPen = new Pen(Color.Green, 1);
+        private static Point goal;
         private static int blockSize = 0;
-        enum Directions : int {UP,DOWN,LEFT,RIGHT};
-
-        struct Coordinates
-        {
-            private int x;
-            private int y;
-            public void setX(int xnum) { x = xnum; }
-            public void setY(int ynum) { y = ynum; }
-            public int getX() { return x; }
-            public int getY() { return y; }
-        }
+        private static ArrayList points = new ArrayList();
+        enum Directions{UP,DOWN,LEFT,RIGHT};
 
         static void Main(string[] args)
         {
             Console.WriteLine(image.PhysicalDimension);
 
-            Coordinates coord = findStart();
+            Point coord = findStart();
             findGoal();
-            findPath(coord.getX(), coord.getY());
+            findPath(coord.X, coord.Y);
+            points.Add(goal);
+            Console.WriteLine(points[0].ToString());
+            if (points.Contains(new Point(22, 417))) Console.WriteLine("Found you");
             image.Save(Environment.CurrentDirectory + @"\solved-mazes\maze1solved.png");
         }
          
-        static Coordinates findStart()
+        static Point findStart()
         {
-            Coordinates coord = new Coordinates();
-            coord.setX(0);
-            coord.setY(0);
+            Point coord = new Point(0, 0);
 
             for (int x = 0; x < image.Width; x++)
             {
@@ -48,8 +41,8 @@ namespace Maze_Solver
                         findBlockSize(x, y);
                         x += (blockSize / 2) - 1;
                         y += (blockSize / 2) - 1;
-                        coord.setX(x);
-                        coord.setY(y);
+                        coord.X = x;
+                        coord.Y = y;
                         return coord;
                     }
                 }
@@ -57,6 +50,7 @@ namespace Maze_Solver
             return coord;
         }
 
+        //Finds the block size based on the width of the starting point.
         static void findBlockSize(int currX, int currY)
         {
             while(image.GetPixel(currX, currY) == Color.FromArgb(255, 255, 0, 0))
@@ -64,7 +58,6 @@ namespace Maze_Solver
                 blockSize++;
                 currX++;
             }
-
             Console.WriteLine("block size = " + blockSize);
         }
 
@@ -124,8 +117,8 @@ namespace Maze_Solver
                     {
                         x += (blockSize / 2) - 1;
                         y += (blockSize / 2) - 1;
-                        goal.setX(x);
-                        goal.setY(y);
+                        goal.X = x;
+                        goal.Y = y;
                         return;
                     }
                 }
@@ -221,22 +214,10 @@ namespace Maze_Solver
             }
         }
 
-        static void fillBlock(int x, int y, Color color)
-        {
-            for (int i = x - (blockSize/2 + 1); i < x + (blockSize/2 + 1); i++)
-            {
-                for (int j = y - (blockSize/2 + 1); j < y + (blockSize/2 + 1); j++)
-                {
-                    if(i > 0 && j > 0 && i < image.Width && j < image.Height
-                        && image.GetPixel(i, j) == Color.FromArgb(255,255,255,255))image.SetPixel(i, j, color);
-                }
-            }
-        }
-
         //Incomplete, have to find a way to add this distance formula to the amount traversed already.
         static double aStarEval(int currX, int currY)
         {
-            return Math.Sqrt(Math.Pow(goal.getX() - currX, 2) + Math.Pow(goal.getY() - currY, 2) );
+            return Math.Sqrt(Math.Pow(goal.X - currX, 2) + Math.Pow(goal.Y - currY, 2) );
         }
 
     }
