@@ -7,6 +7,8 @@ namespace Maze_Solver
     {
         private static string path = Environment.CurrentDirectory + @"\input-mazes\maze1.png";
         private static Bitmap image = new Bitmap(path, true);
+        private static Graphics gManipulator = Graphics.FromImage(image);
+        private static Pen greenPen = new Pen(Color.Green, blockSize);
         private static Coordinates goal;
         private static int blockSize = 0;
         enum Directions : int {UP,DOWN,LEFT,RIGHT};
@@ -153,7 +155,8 @@ namespace Maze_Solver
                 tempPixel = findPath(currX, currY - blockSize);
                 if (tempPixel == Color.FromArgb(255, 0, 0, 255))
                 {
-                    image.SetPixel(currX, currY, Color.FromArgb(255, 0, 255, 0));
+                    //image.SetPixel(currX, currY, Color.FromArgb(255, 0, 255, 0));
+                    gManipulator.DrawLine(greenPen, currX, currY, currX, currY - blockSize);
                     currentPixel = tempPixel;
                 }
             }
@@ -163,7 +166,8 @@ namespace Maze_Solver
                 tempPixel = findPath(currX, currY + blockSize);
                 if (tempPixel == Color.FromArgb(255, 0, 0, 255))
                 {
-                    image.SetPixel(currX, currY, Color.FromArgb(255, 0, 255, 0));
+                    //image.SetPixel(currX, currY, Color.FromArgb(255, 0, 255, 0));
+                    gManipulator.DrawLine(greenPen, currX, currY, currX, currY + blockSize);
                     currentPixel = tempPixel;
                 }
             }
@@ -173,7 +177,8 @@ namespace Maze_Solver
                 tempPixel = findPath(currX - blockSize, currY);
                 if (tempPixel == Color.FromArgb(255, 0, 0, 255))
                 {
-                    image.SetPixel(currX, currY, Color.FromArgb(255, 0, 255, 0));
+                    //image.SetPixel(currX, currY, Color.FromArgb(255, 0, 255, 0));
+                    gManipulator.DrawLine(greenPen, currX, currY, currX - blockSize, currY);
                     currentPixel = tempPixel;
                 }
             }
@@ -183,7 +188,8 @@ namespace Maze_Solver
                 tempPixel = findPath(currX + blockSize, currY);
                 if (tempPixel == Color.FromArgb(255, 0, 0, 255))
                 {
-                    image.SetPixel(currX, currY, Color.FromArgb(255, 0, 255, 0));
+                    //image.SetPixel(currX, currY, Color.FromArgb(255, 0, 255, 0));
+                    gManipulator.DrawLine(greenPen, currX, currY, currX + blockSize, currY);
                     currentPixel = tempPixel;
                 }
             }
@@ -203,13 +209,26 @@ namespace Maze_Solver
             return currentPixel;
         }
 
+        static void fillLine(int fromx, int fromy, int toX, int toY, Color color)
+        {
+            for (int i = fromx - (blockSize / 2 + 1); i < fromx + (blockSize / 2 + 1); i++)
+            {
+                for (int j = fromy - (blockSize / 2 + 1); j < fromy + (blockSize / 2 + 1); j++)
+                {
+                    if (i > 0 && j > 0 && i < image.Width && j < image.Height
+                        && image.GetPixel(i, j) == Color.FromArgb(255, 255, 255, 255)) image.SetPixel(i, j, color);
+                }
+            }
+        }
+
         static void fillBlock(int x, int y, Color color)
         {
-            for (int i = x - blockSize/2; i < x + blockSize/2; i++)
+            for (int i = x - (blockSize/2 + 1); i < x + (blockSize/2 + 1); i++)
             {
-                for (int j = y - blockSize / 2; i < y + blockSize / 2; i++)
+                for (int j = y - (blockSize/2 + 1); j < y + (blockSize/2 + 1); j++)
                 {
-                    image.SetPixel(x, y, color);
+                    if(i > 0 && j > 0 && i < image.Width && j < image.Height
+                        && image.GetPixel(i, j) == Color.FromArgb(255,255,255,255))image.SetPixel(i, j, color);
                 }
             }
         }
