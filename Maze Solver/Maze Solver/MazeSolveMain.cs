@@ -1,19 +1,20 @@
 ﻿using System;
 using System.Drawing;
 using System.Collections;
+using System.Collections.Generic;
 
 namespace Maze_Solver
 {
     public class MazeSolveMain
     {
-        private static string path = Environment.CurrentDirectory + @"\input-mazes\maze1.png";
+        private static string path = Environment.CurrentDirectory + @"\input-mazes\maze4.png";
         private static Bitmap image = new Bitmap(path, true);
         private static Graphics gManipulator = Graphics.FromImage(image);
         private static Pen greenPen = new Pen(Color.Green, 1);
         private static Point goal;
         private static int blockSize = 0;
-        private static ArrayList points = new ArrayList();
-        enum Directions{UP,DOWN,LEFT,RIGHT};
+        private static List<Point> points = new List<Point>();
+        enum Directions{UP, UPLEFT, UPRIGHT, DOWN, DOWNLEFT, DOWNRIGHT, LEFT,RIGHT};
 
         static void Main(string[] args)
         {
@@ -58,51 +59,6 @@ namespace Maze_Solver
             Console.WriteLine("block size = " + blockSize);
         }
 
-        //checks if the way is clear for traversal.
-        static bool checkIfClear(int currX, int currY, int direction)
-        {
-            int blockSizeTemp = blockSize;
-
-            if(direction == (int)Directions.UP)
-            {
-                while(blockSizeTemp > 0)
-                {
-                    if (image.GetPixel(currX, currY) == Color.FromArgb(255, 0, 0, 0)) return false;
-                    currY--;
-                    blockSizeTemp--;
-                }
-            }
-            else if(direction == (int)Directions.DOWN)
-            {
-                while (blockSizeTemp > 0)
-                {
-                    if (image.GetPixel(currX, currY) == Color.FromArgb(255, 0, 0, 0)) return false;
-                    currY++;
-                    blockSizeTemp--;
-                }
-            }
-            else if (direction == (int)Directions.LEFT)
-            {
-                while (blockSizeTemp > 0)
-                {
-                    if (image.GetPixel(currX, currY) == Color.FromArgb(255, 0, 0, 0)) return false;
-                    currX--;
-                    blockSizeTemp--;
-                }
-            }
-            else if (direction == (int)Directions.RIGHT)
-            {
-                while (blockSizeTemp > 0)
-                {
-                    if (image.GetPixel(currX, currY) == Color.FromArgb(255, 0, 0, 0)) return false;
-                    currX++;
-                    blockSizeTemp--;
-                }
-            }
-
-            return true;
-        }
-
         //Currently only used to calculate for A*
         static void findGoal()
         {
@@ -127,60 +83,23 @@ namespace Maze_Solver
         {
             Color currentPixel = image.GetPixel(current.X, current.Y);
             Color tempPixel;
-            Point tempPoint;
 
             //If black, Blue, or if has already been visited.
             if (currentPixel == Color.FromArgb(255, 0, 0, 0)
                 || currentPixel == Color.FromArgb(255, 0, 0, 255)
                 || points.Contains(current)) return currentPixel;
 
-            image.SetPixel(current.X, current.Y, Color.FromArgb(255, 255, 0, 255));
+            //image.SetPixel(current.X, current.Y, Color.FromArgb(255, 255, 0, 255));
             points.Add(current);
 
             //aStarEval(currX, currY);
 
-            //up
-            if (current.Y - blockSize > 0 && checkIfClear(current.X, current.Y, (int)Directions.UP))
+            foreach(Point neighbor in getNeighbors(current))
             {
-                tempPoint = new Point(current.X, current.Y - blockSize);
-                tempPixel = findPath(tempPoint);
+                tempPixel = findPath(neighbor);
                 if (tempPixel == Color.FromArgb(255, 0, 0, 255))
                 {
-                    gManipulator.DrawLine(greenPen, current, tempPoint);
-                    currentPixel = tempPixel;
-                }
-            }
-            //down
-            if (current.Y + blockSize < image.Height - 1
-                && checkIfClear(current.X, current.Y, (int)Directions.DOWN))
-            {
-                tempPoint = new Point(current.X, current.Y + blockSize);
-                tempPixel = findPath(tempPoint);
-                if (tempPixel == Color.FromArgb(255, 0, 0, 255))
-                {
-                    gManipulator.DrawLine(greenPen, current, tempPoint);
-                    currentPixel = tempPixel;
-                }
-            }
-            //left
-            if (current.X - blockSize > 0 && checkIfClear(current.X, current.Y, (int)Directions.LEFT))
-            {
-                tempPoint = new Point(current.X - blockSize, current.Y);
-                tempPixel = findPath(tempPoint);
-                if (tempPixel == Color.FromArgb(255, 0, 0, 255))
-                {
-                    gManipulator.DrawLine(greenPen, current, tempPoint);
-                    currentPixel = tempPixel;
-                }
-            }
-            //right
-            if (current.X + blockSize < image.Width && checkIfClear(current.X, current.Y, (int)Directions.RIGHT))
-            {
-                tempPoint = new Point(current.X + blockSize, current.Y);
-                tempPixel = findPath(tempPoint);
-                if (tempPixel == Color.FromArgb(255, 0, 0, 255))
-                {
-                    gManipulator.DrawLine(greenPen, current, tempPoint);
+                    gManipulator.DrawLine(greenPen, current, neighbor);
                     currentPixel = tempPixel;
                 }
             }
@@ -200,16 +119,71 @@ namespace Maze_Solver
             return currentPixel;
         }
 
-        static void fillLine(int fromx, int fromy, int toX, int toY, Color color)
+        //static List<Point> getNeighbors(Point current)
+        //{
+        //    List<Point> neighbors = new List<Point>();
+
+        //    for (int x = -1; x <= 1; x++)
+        //    {
+        //        for (int y = -1; y <= 1; y++)
+        //        {
+        //            if (x == 0 && y == 0) continue;
+
+        //            int xCoord = current.X + x;
+        //            int yCoord = current.Y + y;
+
+        //            if (xCoord >= 0 && xCoord < image.Width && yCoord >= 0 && yCoord < image.Height)
+        //            {
+        //                neighbors.Add(new Point(xCoord, yCoord));
+        //            }
+        //        }
+        //    }
+
+        //    return neighbors;
+        //}
+
+        static List<Point> getNeighbors(Point current)
         {
-            for (int i = fromx - (blockSize / 2 + 1); i < fromx + (blockSize / 2 + 1); i++)
+            List<Point> neighbors = new List<Point>();
+
+            for (int x = -blockSize; x <= blockSize; x += blockSize)
             {
-                for (int j = fromy - (blockSize / 2 + 1); j < fromy + (blockSize / 2 + 1); j++)
+                for (int y = -blockSize; y <= blockSize; y += blockSize)
                 {
-                    if (i > 0 && j > 0 && i < image.Width && j < image.Height
-                        && image.GetPixel(i, j) == Color.FromArgb(255, 255, 255, 255)) image.SetPixel(i, j, color);
+                    //Don't consider own point or diagonal neighbors.
+                    if (x == 0 && y == 0) continue;
+                    if (x == -blockSize && y == -blockSize) continue;
+                    if (x == blockSize && y == -blockSize) continue;
+                    if (x == -blockSize && y == blockSize) continue;
+                    if (x == blockSize && y == blockSize) continue;
+
+                    int xCoord = current.X + x;
+                    int yCoord = current.Y + y;
+
+                    if (xCoord >= 0 && xCoord < image.Width && yCoord >= 0 && yCoord < image.Height
+                        && checkIfClear(current.X, current.Y , x/blockSize, y/blockSize))
+                    {
+                        neighbors.Add(new Point(xCoord, yCoord));
+                    }
                 }
             }
+            return neighbors;
+        }
+
+        //checks if the way is clear for traversal.
+        static bool checkIfClear(int currX, int currY, int expandX, int expandY)
+        {
+            int blockSizeTemp = blockSize;
+
+            while (blockSizeTemp >= 0 && currX >= 0 && currX < image.Width && currY >= 0 && currY < image.Height)
+            {
+                if (image.GetPixel(currX, currY) == Color.FromArgb(255, 0, 0, 0)) return false;
+
+                currX += expandX;
+                currY += expandY;
+                blockSizeTemp--;
+            }
+            return true;
         }
 
         //Incomplete, have to find a way to add this distance formula to the amount traversed already.
