@@ -129,13 +129,13 @@ namespace Maze_Solver
             Color tempPixel;
             Point tempPoint;
 
-            //If black, Blue, Purple, or Green
+            //If black, Blue, or if has already been visited.
             if (currentPixel == Color.FromArgb(255, 0, 0, 0)
                 || currentPixel == Color.FromArgb(255, 0, 0, 255)
-                || currentPixel == Color.FromArgb(255, 255, 0, 255)
-                || currentPixel == Color.FromArgb(255, 0, 255, 0)) return currentPixel;
+                || points.Contains(current)) return currentPixel;
 
             image.SetPixel(current.X, current.Y, Color.FromArgb(255, 255, 0, 255));
+            points.Add(current);
 
             //aStarEval(currX, currY);
 
@@ -151,7 +151,8 @@ namespace Maze_Solver
                 }
             }
             //down
-            if (current.Y + blockSize < image.Height - 1 && checkIfClear(current.X, current.Y, (int)Directions.DOWN))
+            if (current.Y + blockSize < image.Height - 1
+                && checkIfClear(current.X, current.Y, (int)Directions.DOWN))
             {
                 tempPoint = new Point(current.X, current.Y + blockSize);
                 tempPixel = findPath(tempPoint);
