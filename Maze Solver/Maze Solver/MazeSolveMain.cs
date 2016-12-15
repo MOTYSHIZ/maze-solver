@@ -1,19 +1,17 @@
 ﻿using System;
 using System.Drawing;
-using System.Collections;
 using System.Collections.Generic;
 
 namespace Maze_Solver
 {
     public class MazeSolveMain
     {
-        private static string path = Environment.CurrentDirectory + @"\input-mazes\maze1.png";
+        private static string path = Environment.CurrentDirectory + @"\input-mazes\maze2.png";
         private static Bitmap image = new Bitmap(path, true);
         private static Graphics gManipulator = Graphics.FromImage(image);
         private static Pen greenPen = new Pen(Color.Green, 1);
-        private static Point goal;
+        private static Node goal = new Node(0,0);
         private static int blockSize = 0;
-        private static List<Node> points = new List<Node>();
         enum Directions{UP, UPLEFT, UPRIGHT, DOWN, DOWNLEFT, DOWNRIGHT, LEFT,RIGHT};
 
         class Node : IEquatable<Node>
@@ -21,7 +19,7 @@ namespace Maze_Solver
             public Point point = new Point();
             public int gValue;
             public int hValue;
-            public Point parent;
+            public Node parent;
 
             public Node(int x, int y)
             {
@@ -45,10 +43,11 @@ namespace Maze_Solver
         {
             Console.WriteLine("Image size: " + image.PhysicalDimension);
 
-            Node coord = findStart();
-            //findGoal();
-            findPath(coord);
+            Node start = findStart();
+            findGoal();
+            if(findPath(start, goal) == true) Console.WriteLine("Maze Solved!");
             image.Save(Environment.CurrentDirectory + @"\solved-mazes\maze1solved.png");
+            Console.ReadLine();
         }
          
         static Node findStart()
@@ -95,8 +94,8 @@ namespace Maze_Solver
                     {
                         x += (blockSize / 2) - 1;
                         y += (blockSize / 2) - 1;
-                        goal.X = x;
-                        goal.Y = y;
+                        goal.point.X = x;
+                        goal.point.Y = y;
                         return;
                     }
                 }
@@ -104,31 +103,86 @@ namespace Maze_Solver
         }
 
         //The main path finding function.
-        static Color findPath(Node current)
+        static bool findPath(Node start, Node target)
         {
-            Color currentPixel = image.GetPixel(current.point.X, current.point.Y);
-            Color tempPixel;
-
-            //If black, Blue, or if has already been visited.
-            if (currentPixel == Color.FromArgb(255, 0, 0, 0)
-                || currentPixel == Color.FromArgb(255, 0, 0, 255)
-                || points.Contains(current)) return currentPixel;
-
-            //image.SetPixel(current.point.X, current.point.Y, Color.FromArgb(255, 255, 0, 255));
-            points.Add(current);
-
-            foreach(Node neighbor in getNeighbors(current))
+            List<Node> explored = new List<Node>();
+            List<Node> frontier = new List<Node>();
+            frontier.Add(start);
+            
+            while (frontier.Count > 0)
             {
-                tempPixel = findPath(neighbor);
-                if (tempPixel == Color.FromArgb(255, 0, 0, 255))
+                Node current = frontier[0];
+                for (int i = 1; i < frontier.Count; i++)
                 {
-                    gManipulator.DrawLine(greenPen, current.point, neighbor.point);
-                    currentPixel = tempPixel;
+                    if (frontier[i].fValue() < current.fValue() 
+                        || frontier[i].fValue() == current.fValue() && frontier[i].hValue < current.hValue)
+                    {
+                        current = frontier[i];
+                    }
+                }
+
+                frontier.Remove(current);
+                explored.Add(current);
+
+                //If at goal
+                if (current == target || image.GetPixel(current.point.X, current.point.Y) == Color.FromArgb(255,0,0,255))
+                {
+                    List<Node> path = retrace(start, current);
+                    Point[] nodes = new Point[path.Count];
+                    for (int i = 0; i < nodes.Length; i++)
+                    {
+                        nodes[i] = path[i].point;
+                    }
+
+                    gManipulator.DrawLines(greenPen, nodes);
+                    return true;
+                }
+
+                foreach (Node neighbor in getNeighbors(current))
+                {
+                    if (explored.Contains(neighbor)) continue;
+
+                    int newMovementCostToNeighbor = current.gValue + findDistance(current, neighbor);
+                    if(newMovementCostToNeighbor < neighbor.gValue || !frontier.Contains(neighbor))
+                    {
+                        neighbor.gValue = newMovementCostToNeighbor;
+                        neighbor.hValue = findDistance(neighbor, target);
+                        neighbor.parent = current;
+
+                        if (!frontier.Contains(neighbor)) frontier.Add(neighbor);
+                    }
                 }
             }
 
-            return currentPixel;
+            return false;
         }
+
+        ////The main path finding function.
+        //static Color findPath(Node current)
+        //{
+        //    Color currentPixel = image.GetPixel(current.point.X, current.point.Y);
+        //    Color tempPixel;
+
+        //    //If black, Blue, or if has already been visited.
+        //    if (currentPixel == Color.FromArgb(255, 0, 0, 0)
+        //        || currentPixel == Color.FromArgb(255, 0, 0, 255)
+        //        || points.Contains(current)) return currentPixel;
+
+        //    //image.SetPixel(current.point.X, current.point.Y, Color.FromArgb(255, 255, 0, 255));
+        //    points.Add(current);
+
+        //    foreach(Node neighbor in getNeighbors(current))
+        //    {
+        //        tempPixel = findPath(neighbor);
+        //        if (tempPixel == Color.FromArgb(255, 0, 0, 255))
+        //        {
+        //            gManipulator.DrawLine(greenPen, current.point, neighbor.point);
+        //            currentPixel = tempPixel;
+        //        }
+        //    }
+
+        //    return currentPixel;
+        //}
 
         //static List<Point> getNeighbors(Point current)
         //{
@@ -163,10 +217,10 @@ namespace Maze_Solver
                 {
                     //Don't consider own point or diagonal neighbors.
                     if (x == 0 && y == 0) continue;
-                    if (x == -blockSize && y == -blockSize) continue;
-                    if (x == blockSize && y == -blockSize) continue;
-                    if (x == -blockSize && y == blockSize) continue;
-                    if (x == blockSize && y == blockSize) continue;
+                    //if (x == -blockSize && y == -blockSize) continue;
+                    //if (x == blockSize && y == -blockSize) continue;
+                    //if (x == -blockSize && y == blockSize) continue;
+                    //if (x == blockSize && y == blockSize) continue;
 
                     int xCoord = current.point.X + x;
                     int yCoord = current.point.Y + y;
@@ -197,9 +251,30 @@ namespace Maze_Solver
             return true;
         }
 
-        static double findDistance(int x1, int y1, int x2, int y2)
+        static int findDistance(Node current, Node target)
         {
-            return Math.Sqrt(Math.Pow(x2 - x1, 2) + Math.Pow(y2 - y1, 2) );
+            int xDistance = Math.Abs(current.point.X - target.point.X);
+            int yDistance = Math.Abs(current.point.Y - target.point.Y);
+
+            if (xDistance > yDistance) return 14 * yDistance + 10 * (xDistance - yDistance);
+            return 14 * xDistance + 10 * (yDistance - xDistance);
+
+            //return (int)Math.Sqrt(Math.Pow(target.point.X - current.point.X, 2) + Math.Pow(target.point.Y - current.point.Y, 2) );
+        }
+
+        static List<Node> retrace(Node start, Node target)
+        {
+            List<Node> path = new List<Node>();
+            Node current = target;
+
+            while(current != start)
+            {
+                path.Add(current);
+                current = current.parent;
+            }
+            path.Add(start);
+            path.Reverse();
+            return path;
         }
     }
 }
