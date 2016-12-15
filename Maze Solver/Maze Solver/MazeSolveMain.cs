@@ -7,28 +7,53 @@ namespace Maze_Solver
 {
     public class MazeSolveMain
     {
-        private static string path = Environment.CurrentDirectory + @"\input-mazes\maze4.png";
+        private static string path = Environment.CurrentDirectory + @"\input-mazes\maze1.png";
         private static Bitmap image = new Bitmap(path, true);
         private static Graphics gManipulator = Graphics.FromImage(image);
         private static Pen greenPen = new Pen(Color.Green, 1);
         private static Point goal;
         private static int blockSize = 0;
-        private static List<Point> points = new List<Point>();
+        private static List<Node> points = new List<Node>();
         enum Directions{UP, UPLEFT, UPRIGHT, DOWN, DOWNLEFT, DOWNRIGHT, LEFT,RIGHT};
+
+        class Node : IEquatable<Node>
+        {
+            public Point point = new Point();
+            public int gValue;
+            public int hValue;
+            public Point parent;
+
+            public Node(int x, int y)
+            {
+                point.X = x;
+                point.Y = y;
+            }
+
+            public int fValue()
+            {
+                return gValue + hValue;
+            }
+
+            public bool Equals(Node other)
+            {
+                return this.point.X == other.point.X &&
+                       this.point.Y == other.point.Y;
+            }
+        }
 
         static void Main(string[] args)
         {
             Console.WriteLine("Image size: " + image.PhysicalDimension);
 
-            Point coord = findStart();
-            findGoal();
+            Node coord = findStart();
+            //findGoal();
             findPath(coord);
             image.Save(Environment.CurrentDirectory + @"\solved-mazes\maze1solved.png");
         }
          
-        static Point findStart()
+        static Node findStart()
         {
-            Point coord = new Point(0, 0);
+            Node coord = new Node(0, 0);
 
             for (int x = 0; x < image.Width; x++)
             {
@@ -39,8 +64,8 @@ namespace Maze_Solver
                         findBlockSize(x, y);
                         x += (blockSize / 2) - 1;
                         y += (blockSize / 2) - 1;
-                        coord.X = x;
-                        coord.Y = y;
+                        coord.point.X = x;
+                        coord.point.Y = y;
                         return coord;
                     }
                 }
@@ -79,9 +104,9 @@ namespace Maze_Solver
         }
 
         //The main path finding function.
-        static Color findPath(Point current)
+        static Color findPath(Node current)
         {
-            Color currentPixel = image.GetPixel(current.X, current.Y);
+            Color currentPixel = image.GetPixel(current.point.X, current.point.Y);
             Color tempPixel;
 
             //If black, Blue, or if has already been visited.
@@ -89,32 +114,18 @@ namespace Maze_Solver
                 || currentPixel == Color.FromArgb(255, 0, 0, 255)
                 || points.Contains(current)) return currentPixel;
 
-            //image.SetPixel(current.X, current.Y, Color.FromArgb(255, 255, 0, 255));
+            //image.SetPixel(current.point.X, current.point.Y, Color.FromArgb(255, 255, 0, 255));
             points.Add(current);
 
-            //aStarEval(currX, currY);
-
-            foreach(Point neighbor in getNeighbors(current))
+            foreach(Node neighbor in getNeighbors(current))
             {
                 tempPixel = findPath(neighbor);
                 if (tempPixel == Color.FromArgb(255, 0, 0, 255))
                 {
-                    gManipulator.DrawLine(greenPen, current, neighbor);
+                    gManipulator.DrawLine(greenPen, current.point, neighbor.point);
                     currentPixel = tempPixel;
                 }
             }
-
-            //The 4 functions below will recursively call findpath, with different starting point values 
-            // if breadth-first, should probably perform check on each child before recurs call
-            // This could probably be done with Booleans to trigger the recurs calls after the initial children have been checked.
-            // 
-
-            //Up
-            //Go Deeper into up move, set base case as hit wall or goal, so base case will be in findpath()
-
-            //Down
-            //Left
-            //Right
 
             return currentPixel;
         }
@@ -142,9 +153,9 @@ namespace Maze_Solver
         //    return neighbors;
         //}
 
-        static List<Point> getNeighbors(Point current)
+        static List<Node> getNeighbors(Node current)
         {
-            List<Point> neighbors = new List<Point>();
+            List<Node> neighbors = new List<Node>();
 
             for (int x = -blockSize; x <= blockSize; x += blockSize)
             {
@@ -157,13 +168,13 @@ namespace Maze_Solver
                     if (x == -blockSize && y == blockSize) continue;
                     if (x == blockSize && y == blockSize) continue;
 
-                    int xCoord = current.X + x;
-                    int yCoord = current.Y + y;
+                    int xCoord = current.point.X + x;
+                    int yCoord = current.point.Y + y;
 
                     if (xCoord >= 0 && xCoord < image.Width && yCoord >= 0 && yCoord < image.Height
-                        && checkIfClear(current.X, current.Y , x/blockSize, y/blockSize))
+                        && checkIfClear(current.point.X, current.point.Y , x/blockSize, y/blockSize))
                     {
-                        neighbors.Add(new Point(xCoord, yCoord));
+                        neighbors.Add(new Node(xCoord, yCoord));
                     }
                 }
             }
@@ -186,11 +197,9 @@ namespace Maze_Solver
             return true;
         }
 
-        //Incomplete, have to find a way to add this distance formula to the amount traversed already.
-        static double aStarEval(int currX, int currY)
+        static double findDistance(int x1, int y1, int x2, int y2)
         {
-            return Math.Sqrt(Math.Pow(goal.X - currX, 2) + Math.Pow(goal.Y - currY, 2) );
+            return Math.Sqrt(Math.Pow(x2 - x1, 2) + Math.Pow(y2 - y1, 2) );
         }
-
     }
 }
