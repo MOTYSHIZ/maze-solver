@@ -6,22 +6,18 @@ namespace Maze_Solver
 {
     public class MazeSolveMain
     {
-        private static string path = Environment.CurrentDirectory + @"\input-mazes\maze5.png";
+        private static string path = Environment.CurrentDirectory + @"\input-mazes\maze3.png";
         private static Bitmap image = new Bitmap(path, true);
         private static Graphics gManipulator = Graphics.FromImage(image);
-        private static Pen greenPen = new Pen(Color.Green, 3);
-        private static Node goal = new Node(0,0);
+        private static Pen greenPen = new Pen(Color.Green, 2);
         private static int blockSize = 0;
-        enum Directions{UP, UPLEFT, UPRIGHT, DOWN, DOWNLEFT, DOWNRIGHT, LEFT,RIGHT};
 
-        class Node : IEquatable<Node>, IEqualityComparer<Node>
+        class Node : IEquatable<Node>
         {
             public Point point = new Point();
             public int gValue;
             public int hValue;
             public Node parent;
-
-            public Node() { }
 
             public Node(int x, int y)
             {
@@ -39,34 +35,24 @@ namespace Maze_Solver
                 return this.point.X == other.point.X &&
                        this.point.Y == other.point.Y;
             }
-
-            public bool Equals(Node node1, Node node2)
-            {
-                return node1.point.X == node2.point.X &&
-                       node1.point.Y == node2.point.Y;
-            }
-
-            public int GetHashCode(Node node)
-            {
-                return point.X;
-            }
         }
 
         static void Main(string[] args)
         {
             Console.WriteLine("Image size: " + image.PhysicalDimension);
-
-            Node start = findStart();
-            findGoal();
-            //Console.WriteLine(Color.FromArgb(255,255,255,255).A);
-
-            if (findPath(start, goal) == true) Console.WriteLine("Maze Solved!");
-            else Console.WriteLine("Maze not Solved... D:");
-            image.Save(Environment.CurrentDirectory + @"\solved-mazes\maze1solved.png");
             
+            Node start = findStart();
+            Node goal = findGoal();
+            if (start == null) Console.WriteLine("Unable to find Start Location.");
+            else if (goal == null) Console.WriteLine("Unable to find Goal Location.");
+            else if (findPath(start, goal) == true) Console.WriteLine("Maze Solved!");
+            else Console.WriteLine("Maze not Solved... D:");
+
+            clearTracers();
+            image.Save(Environment.CurrentDirectory + @"\solved-mazes\maze1solved.png");
             Console.ReadLine();
         }
-         
+
         static Node findStart()
         {
             Node coord = new Node(0, 0);
@@ -101,8 +87,10 @@ namespace Maze_Solver
         }
 
         //Currently only used to calculate for A*
-        static void findGoal()
+        static Node findGoal()
         {
+            Node goal = new Node(0,0);
+
             for (int x = 0; x < image.Width; x++)
             {
                 for (int y = 0; y < image.Height; y++)
@@ -113,17 +101,16 @@ namespace Maze_Solver
                         y += (blockSize / 2) - 1;
                         goal.point.X = x;
                         goal.point.Y = y;
-                        return;
+                        return goal;
                     }
                 }
             }
+            return null;
         }
 
         //The main path finding function.
         static bool findPath(Node start, Node target)
         {
-            IEqualityComparer<Node> comparer = new Node();
-            HashSet<Node> explored = new HashSet<Node>(comparer);
             List<Node> frontier = new List<Node>();
             frontier.Add(start);
             
@@ -138,9 +125,7 @@ namespace Maze_Solver
                         current = frontier[i];
                     }
                 }
-
                 frontier.Remove(current);
-                explored.Add(current);
                 
                 //If at goal
                 if (current == target || image.GetPixel(current.point.X, current.point.Y) == Color.FromArgb(255,0,0,255))
@@ -161,74 +146,24 @@ namespace Maze_Solver
                 foreach (Node neighbor in getNeighbors(current))
                 {
                     if (image.GetPixel(neighbor.point.X, neighbor.point.Y) == Color.FromArgb(255, 255, 0, 255)) continue;
-                    //if (explored.Contains(neighbor)) continue;
 
                     int newMovementCostToNeighbor = current.gValue + findDistance(current, neighbor);
                     if(newMovementCostToNeighbor < neighbor.gValue || !frontier.Contains(neighbor))
                     {
                         neighbor.gValue = newMovementCostToNeighbor;
                         neighbor.hValue = findDistance(neighbor, target);
+                        if (neighbor.hValue < 50) blockSize = 1;
                         neighbor.parent = current;
 
                         if (!frontier.Contains(neighbor)) frontier.Add(neighbor);
                     }
                 }
             }
-
             return false;
         }
 
-        ////The main path finding function.
-        //static Color findPath(Node current)
-        //{
-        //    Color currentPixel = image.GetPixel(current.point.X, current.point.Y);
-        //    Color tempPixel;
-
-        //    //If black, Blue, or if has already been visited.
-        //    if (currentPixel == Color.FromArgb(255, 0, 0, 0)
-        //        || currentPixel == Color.FromArgb(255, 0, 0, 255)
-        //        || points.Contains(current)) return currentPixel;
-
-        //    //image.SetPixel(current.point.X, current.point.Y, Color.FromArgb(255, 255, 0, 255));
-        //    points.Add(current);
-
-        //    foreach(Node neighbor in getNeighbors(current))
-        //    {
-        //        tempPixel = findPath(neighbor);
-        //        if (tempPixel == Color.FromArgb(255, 0, 0, 255))
-        //        {
-        //            gManipulator.DrawLine(greenPen, current.point, neighbor.point);
-        //            currentPixel = tempPixel;
-        //        }
-        //    }
-
-        //    return currentPixel;
-        //}
-
-        //static List<Node> getNeighbors(Node current)
-        //{
-        //    List<Node> neighbors = new List<Node>();
-
-        //    for (int x = -1; x <= 1; x++)
-        //    {
-        //        for (int y = -1; y <= 1; y++)
-        //        {
-        //            if (x == 0 && y == 0) continue;
-
-        //            int xCoord = current.point.X + x;
-        //            int yCoord = current.point.Y + y;
-
-        //            if (xCoord >= 0 && xCoord < image.Width && yCoord >= 0 && yCoord < image.Height
-        //                && image.GetPixel(current.point.X + x, current.point.Y + y) != Color.FromArgb(255, 0, 0, 0))
-        //            {
-        //                neighbors.Add(new Node(xCoord, yCoord));
-        //            }
-        //        }
-        //    }
-
-        //    return neighbors;
-        //}
-
+        /*Used to find neighbors of the current node, so that they can be added to the
+          frontier heap for the A* pathfinding algorithm. */
         static List<Node> getNeighbors(Node current)
         {
             List<Node> neighbors = new List<Node>();
@@ -237,12 +172,8 @@ namespace Maze_Solver
             {
                 for (int y = -blockSize; y <= blockSize; y += blockSize)
                 {
-                    //Don't consider own point or diagonal neighbors.
+                    //Don't consider own point, only neighbors.
                     if (x == 0 && y == 0) continue;
-                    //if (x == -blockSize && y == -blockSize) continue;
-                    //if (x == blockSize && y == -blockSize) continue;
-                    //if (x == -blockSize && y == blockSize) continue;
-                    //if (x == blockSize && y == blockSize) continue;
 
                     int xCoord = current.point.X + x;
                     int yCoord = current.point.Y + y;
@@ -300,6 +231,21 @@ namespace Maze_Solver
             path.Add(start);
             path.Reverse();
             return path;
+        }
+
+        //Clears the purple pixels from the map.
+        static void clearTracers()
+        {
+            for (int i = 0; i < image.Width; i++)
+            {
+                for (int j = 0; j < image.Height; j++)
+                {
+                    if (image.GetPixel(i, j) == Color.FromArgb(255, 255, 0, 255))
+                    {
+                        image.SetPixel(i, j, Color.FromArgb(255, 255, 255, 255));
+                    }
+                }
+            }
         }
     }
 }
