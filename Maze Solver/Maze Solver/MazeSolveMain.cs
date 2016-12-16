@@ -6,7 +6,7 @@ namespace Maze_Solver
 {
     public class MazeSolveMain
     {
-        private static string path = Environment.CurrentDirectory + @"\input-mazes\maze2.png";
+        private static string path = Environment.CurrentDirectory + @"\input-mazes\maze3.png";
         private static Bitmap image = new Bitmap(path, true);
         private static Graphics gManipulator = Graphics.FromImage(image);
         private static Pen greenPen = new Pen(Color.Green, 1);
@@ -14,12 +14,14 @@ namespace Maze_Solver
         private static int blockSize = 0;
         enum Directions{UP, UPLEFT, UPRIGHT, DOWN, DOWNLEFT, DOWNRIGHT, LEFT,RIGHT};
 
-        class Node : IEquatable<Node>
+        class Node : IEquatable<Node>, IEqualityComparer<Node>
         {
             public Point point = new Point();
             public int gValue;
             public int hValue;
             public Node parent;
+
+            public Node() { }
 
             public Node(int x, int y)
             {
@@ -36,6 +38,17 @@ namespace Maze_Solver
             {
                 return this.point.X == other.point.X &&
                        this.point.Y == other.point.Y;
+            }
+
+            public bool Equals(Node node1, Node node2)
+            {
+                return node1.point.X == node2.point.X &&
+                       node1.point.Y == node2.point.Y;
+            }
+
+            public int GetHashCode(Node node)
+            {
+                return point.X;
             }
         }
 
@@ -105,10 +118,11 @@ namespace Maze_Solver
         //The main path finding function.
         static bool findPath(Node start, Node target)
         {
-            List<Node> explored = new List<Node>();
+            IEqualityComparer<Node> comparer = new Node();
+            HashSet<Node> explored = new HashSet<Node>(comparer);
             List<Node> frontier = new List<Node>();
             frontier.Add(start);
-            
+
             while (frontier.Count > 0)
             {
                 Node current = frontier[0];
@@ -184,9 +198,9 @@ namespace Maze_Solver
         //    return currentPixel;
         //}
 
-        //static List<Point> getNeighbors(Point current)
+        //static List<Node> getNeighbors(Node current)
         //{
-        //    List<Point> neighbors = new List<Point>();
+        //    List<Node> neighbors = new List<Node>();
 
         //    for (int x = -1; x <= 1; x++)
         //    {
@@ -194,12 +208,13 @@ namespace Maze_Solver
         //        {
         //            if (x == 0 && y == 0) continue;
 
-        //            int xCoord = current.X + x;
-        //            int yCoord = current.Y + y;
+        //            int xCoord = current.point.X + x;
+        //            int yCoord = current.point.Y + y;
 
-        //            if (xCoord >= 0 && xCoord < image.Width && yCoord >= 0 && yCoord < image.Height)
+        //            if (xCoord >= 0 && xCoord < image.Width && yCoord >= 0 && yCoord < image.Height
+        //                && image.GetPixel(current.point.X+x, current.point.Y + y) != Color.FromArgb(255,0,0,0))
         //            {
-        //                neighbors.Add(new Point(xCoord, yCoord));
+        //                neighbors.Add(new Node(xCoord, yCoord));
         //            }
         //        }
         //    }
@@ -226,7 +241,7 @@ namespace Maze_Solver
                     int yCoord = current.point.Y + y;
 
                     if (xCoord >= 0 && xCoord < image.Width && yCoord >= 0 && yCoord < image.Height
-                        && checkIfClear(current.point.X, current.point.Y , x/blockSize, y/blockSize))
+                        && checkIfClear(current.point.X, current.point.Y, x / blockSize, y / blockSize))
                     {
                         neighbors.Add(new Node(xCoord, yCoord));
                     }
