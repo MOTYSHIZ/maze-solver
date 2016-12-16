@@ -6,10 +6,10 @@ namespace Maze_Solver
 {
     public class MazeSolveMain
     {
-        private static string path = Environment.CurrentDirectory + @"\input-mazes\maze3.png";
+        private static string path = Environment.CurrentDirectory + @"\input-mazes\maze5.png";
         private static Bitmap image = new Bitmap(path, true);
         private static Graphics gManipulator = Graphics.FromImage(image);
-        private static Pen greenPen = new Pen(Color.Green, 1);
+        private static Pen greenPen = new Pen(Color.Green, 3);
         private static Node goal = new Node(0,0);
         private static int blockSize = 0;
         enum Directions{UP, UPLEFT, UPRIGHT, DOWN, DOWNLEFT, DOWNRIGHT, LEFT,RIGHT};
@@ -58,8 +58,12 @@ namespace Maze_Solver
 
             Node start = findStart();
             findGoal();
-            if(findPath(start, goal) == true) Console.WriteLine("Maze Solved!");
+            //Console.WriteLine(Color.FromArgb(255,255,255,255).A);
+
+            if (findPath(start, goal) == true) Console.WriteLine("Maze Solved!");
+            else Console.WriteLine("Maze not Solved... D:");
             image.Save(Environment.CurrentDirectory + @"\solved-mazes\maze1solved.png");
+            
             Console.ReadLine();
         }
          
@@ -122,7 +126,7 @@ namespace Maze_Solver
             HashSet<Node> explored = new HashSet<Node>(comparer);
             List<Node> frontier = new List<Node>();
             frontier.Add(start);
-
+            
             while (frontier.Count > 0)
             {
                 Node current = frontier[0];
@@ -137,7 +141,7 @@ namespace Maze_Solver
 
                 frontier.Remove(current);
                 explored.Add(current);
-
+                
                 //If at goal
                 if (current == target || image.GetPixel(current.point.X, current.point.Y) == Color.FromArgb(255,0,0,255))
                 {
@@ -152,9 +156,12 @@ namespace Maze_Solver
                     return true;
                 }
 
+                image.SetPixel(current.point.X, current.point.Y, Color.FromArgb(255, 255, 0, 255));
+
                 foreach (Node neighbor in getNeighbors(current))
                 {
-                    if (explored.Contains(neighbor)) continue;
+                    if (image.GetPixel(neighbor.point.X, neighbor.point.Y) == Color.FromArgb(255, 255, 0, 255)) continue;
+                    //if (explored.Contains(neighbor)) continue;
 
                     int newMovementCostToNeighbor = current.gValue + findDistance(current, neighbor);
                     if(newMovementCostToNeighbor < neighbor.gValue || !frontier.Contains(neighbor))
@@ -212,7 +219,7 @@ namespace Maze_Solver
         //            int yCoord = current.point.Y + y;
 
         //            if (xCoord >= 0 && xCoord < image.Width && yCoord >= 0 && yCoord < image.Height
-        //                && image.GetPixel(current.point.X+x, current.point.Y + y) != Color.FromArgb(255,0,0,0))
+        //                && image.GetPixel(current.point.X + x, current.point.Y + y) != Color.FromArgb(255, 0, 0, 0))
         //            {
         //                neighbors.Add(new Node(xCoord, yCoord));
         //            }
@@ -257,7 +264,12 @@ namespace Maze_Solver
 
             while (blockSizeTemp >= 0 && currX >= 0 && currX < image.Width && currY >= 0 && currY < image.Height)
             {
-                if (image.GetPixel(currX, currY) == Color.FromArgb(255, 0, 0, 0)) return false;
+                if (image.GetPixel(currX, currY).GetBrightness() < .5) return false;
+
+                if(expandX != 0 && expandY != 0)
+                {
+                    if (image.GetPixel(currX + expandX, currY).GetBrightness() < .5 && image.GetPixel(currX, currY + expandY).GetBrightness() < .5) return false;
+                }
 
                 currX += expandX;
                 currY += expandY;
@@ -273,8 +285,6 @@ namespace Maze_Solver
 
             if (xDistance > yDistance) return 14 * yDistance + 10 * (xDistance - yDistance);
             return 14 * xDistance + 10 * (yDistance - xDistance);
-
-            //return (int)Math.Sqrt(Math.Pow(target.point.X - current.point.X, 2) + Math.Pow(target.point.Y - current.point.Y, 2) );
         }
 
         static List<Node> retrace(Node start, Node target)
