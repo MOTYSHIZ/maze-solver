@@ -72,7 +72,7 @@ namespace Maze_Solver
                     }
                 }
             }
-            return coord;
+            return null;
         }
 
         //Finds the block size based on the width of the starting point.
