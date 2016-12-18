@@ -1,17 +1,25 @@
-﻿using System;
+﻿/** Author: Justin Ordonez 
+ * 
+ * This is a maze-solving program that solves images taken in as jpgs, bmps, or pngs.
+ * 
+ * **/
+
+using System;
+using System.IO;
 using System.Diagnostics;
 using System.Drawing;
+using System.Drawing.Imaging;
 using System.Collections.Generic;
 
 namespace Maze_Solver
 {
     public class MazeSolveMain
-    {
-        private static string path = Environment.CurrentDirectory + @"\input-mazes\maze1.png";
-        private static Bitmap image = new Bitmap(path, true);
-        private static Graphics gManipulator = Graphics.FromImage(image);
+    { 
+        private static Bitmap image;
+        private static Graphics gManipulator;
         private static Pen greenPen = new Pen(Color.Green, 2);
         private static int blockSize = 0;
+        private static int threshold = 100;
         private static Stopwatch timer;
 
         static void Main(string[] args)
@@ -26,10 +34,18 @@ namespace Maze_Solver
 
             Console.WriteLine("Image size: " + image.PhysicalDimension);  
             Node start = findColorCenter(Color.FromArgb(255, 255, 0, 0));
-            Node goal = findColorCenter(Color.FromArgb(255, 0, 0, 255));
+            Node goal = findColorCenter(Color.FromArgb(255, 0, 0, 175));
 
-            if (start == null) Console.WriteLine("Unable to find Start Location.");
-            else if (goal == null) Console.WriteLine("Unable to find Goal Location.");
+            if (start == null)
+            {
+                Console.WriteLine("Unable to find Start Location.");
+                Environment.Exit(1);
+            }
+            else if (goal == null)
+            {
+                Console.WriteLine("Unable to find Goal Location.");
+                Environment.Exit(1);
+            }
             else if (algorithmChoose(start, goal) == true) Console.WriteLine("Maze Solved!");
             else Console.WriteLine("Maze not Solved.");
 
@@ -39,15 +55,22 @@ namespace Maze_Solver
 
             clearTracers();     
             saveImage(args[1]);
+
             Console.WriteLine("Press Enter key to exit...");
             Console.ReadLine();
         }
 
         static void loadImage(String imageName)
         {
+            String path = Environment.CurrentDirectory + @"\input-mazes\" + imageName;
+
+            if (imageName.Contains(".bmp"))
+            {
+                path = convertImage(imageName);
+            } 
+
             try
             {
-                path = Environment.CurrentDirectory + @"\input-mazes\" + imageName;
                 image = new Bitmap(path, true);
                 gManipulator = Graphics.FromImage(image);
             }
@@ -58,9 +81,48 @@ namespace Maze_Solver
             }
         }
 
+        /* This method handles converting images from bitmaps. The original image is copied to another 
+         * bitmap because Graphics objects can not be created from images with indexed pixel formats. 
+         */
+        static String convertImage(String imageName)
+        {
+            String path = Environment.CurrentDirectory + @"\input-mazes\" + imageName;
+
+            try
+            {
+                //Clears the temp-conversions folder.
+                string[] filePaths = Directory.GetFiles(Environment.CurrentDirectory + @"\temp-conversions\");
+                foreach (string filePath in filePaths)
+                    File.Delete(filePath);
+
+                image = new Bitmap(path, true);
+                Bitmap tempBitmap = new Bitmap(image.Width, image.Height, PixelFormat.Format32bppArgb);
+                Graphics g = Graphics.FromImage(tempBitmap);
+
+                g.DrawImage(image, new Rectangle(0, 0, tempBitmap.Width, tempBitmap.Height));
+                path = Environment.CurrentDirectory + @"\temp-conversions\" + imageName + ".png";
+                tempBitmap.Save(path, ImageFormat.Png);
+            }
+            catch (Exception ex)
+            {
+                Console.Write("Source image is corrupt, unreadable, or nonexistent.");
+                Environment.Exit(1);
+            }
+            return path;
+        }
+
+        static bool colorEquals(Color c1, Color c2)
+        {
+            if (Math.Abs(c1.R - c2.R) <= threshold
+                && Math.Abs(c1.G - c2.G) <= threshold
+                && Math.Abs(c1.B - c2.B) <= threshold) return true;
+
+            return false;
+        }
+
         static void saveImage(String imageName)
         {
-            if(imageName.Contains(".png")
+            if (imageName.Contains(".png")
                 || imageName.Contains(".jpg")
                 || imageName.Contains(".bmp")) image.Save(Environment.CurrentDirectory + @"\solved-mazes\" + imageName);
             else image.Save(Environment.CurrentDirectory + @"\solved-mazes\" + imageName + ".png");
@@ -68,7 +130,7 @@ namespace Maze_Solver
 
         static bool algorithmChoose(Node start, Node target)
         {
-            Console.WriteLine("Would you like to use: \n1) Wavefront Propagation (Faster) \n2) A star Algorithm to solve the maze?");
+            Console.WriteLine("Would you like to use: \n1) Wavefront Propagation (Faster for large mazes.) \n2) A-Star Algorithm to solve the maze?");
             int input;
             bool solved;
              
@@ -107,7 +169,7 @@ namespace Maze_Solver
             {
                 for (int y = 0; y < image.Height; y++)
                 {
-                    if(image.GetPixel(x, y) == color)
+                    if(colorEquals(image.GetPixel(x, y) , color)) 
                     {
                         if(blockSize == 0)findBlockSize(x, y);
                         x += (blockSize / 2) - 1;
@@ -124,7 +186,7 @@ namespace Maze_Solver
         //Finds the block size based on the width of the starting point.
         static void findBlockSize(int currX, int currY)
         {
-            while(image.GetPixel(currX, currY) == Color.FromArgb(255, 255, 0, 0))
+            while(colorEquals(image.GetPixel(currX, currY) , Color.FromArgb(255, 155, 0, 0)))
             {
                 blockSize++;
                 currX++;
@@ -153,7 +215,7 @@ namespace Maze_Solver
                     {
                         node2.parent = node;
                         if (findDistance(node2, target) < 50) blockSize = 1;
-                        if (image.GetPixel(node2.point.X, node2.point.Y) == Color.FromArgb(255, 0, 0, 255))
+                        if (colorEquals(image.GetPixel(node2.point.X, node2.point.Y), Color.FromArgb(255, 0, 0,155)))
                         {
                             retrace(start, node2);
                             return true;
@@ -188,18 +250,18 @@ namespace Maze_Solver
                 frontier.Remove(current);
                 
                 //If at goal
-                if (image.GetPixel(current.point.X, current.point.Y) == Color.FromArgb(255,0,0,255))
+                if (colorEquals(image.GetPixel(current.point.X, current.point.Y) , Color.FromArgb(255,0,0,155)))
                 {
                     retrace(start, current);
                     return true;
                 }
 
                 image.SetPixel(current.point.X, current.point.Y, Color.FromArgb(255, 255, 0, 255));
-
+                
                 foreach (Node neighbor in getNeighbors(current))
                 {
-                    if (image.GetPixel(neighbor.point.X, neighbor.point.Y) == Color.FromArgb(255, 255, 0, 255)) continue;
-                    bool frontierContains = image.GetPixel(neighbor.point.X, neighbor.point.Y) == Color.FromArgb(255, 255, 0, 255);
+                    bool frontierContains = frontier.Contains(neighbor);
+                    if (frontierContains) continue;
 
                     int newMovementCostToNeighbor = current.gValue + findDistance(current, neighbor);
                     if(newMovementCostToNeighbor < neighbor.gValue || !frontierContains)
@@ -250,13 +312,16 @@ namespace Maze_Solver
         {
             int blockSizeTemp = blockSize;
 
-            while (blockSizeTemp >= 0 && currX >= 0 && currX < image.Width && currY >= 0 && currY < image.Height)
+            while (blockSizeTemp >= 0 && currX >= 0 && currX + expandX < image.Width && currY >= 0 && currY+expandY < image.Height)
             {
-                if (image.GetPixel(currX, currY).GetBrightness() < .5) return false;
+                if (colorEquals(image.GetPixel(currX, currY), Color.FromArgb(255,0,0,0))) return false;
 
-                if(expandX != 0 && expandY != 0)
+                if(expandX != 0 && expandY != 0 
+                    && currX + expandX >= 0 && currX + expandX < image.Width 
+                    && currY + expandY >= 0 && currY + expandY < image.Width)
                 {
-                    if (image.GetPixel(currX + expandX, currY).GetBrightness() < .5 && image.GetPixel(currX, currY + expandY).GetBrightness() < .5) return false;
+                    if (colorEquals(image.GetPixel(currX + expandX, currY), Color.FromArgb(255, 0, 0, 0)) 
+                        && colorEquals(image.GetPixel(currX, currY + expandY), Color.FromArgb(255,0,0,0))) return false;
                 }
 
                 currX += expandX;
