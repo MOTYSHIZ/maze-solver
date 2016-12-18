@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Drawing;
 using System.Collections.Generic;
 
@@ -6,28 +7,96 @@ namespace Maze_Solver
 {
     public class MazeSolveMain
     {
-        private static string path = Environment.CurrentDirectory + @"\input-mazes\maze7.png";
+        private static string path = Environment.CurrentDirectory + @"\input-mazes\maze1.png";
         private static Bitmap image = new Bitmap(path, true);
         private static Graphics gManipulator = Graphics.FromImage(image);
         private static Pen greenPen = new Pen(Color.Green, 2);
         private static int blockSize = 0;
+        private static Stopwatch timer;
 
         static void Main(string[] args)
         {
-            Console.WriteLine("Image size: " + image.PhysicalDimension);
-            
+            //Check if proper amount of arguments passed and attempt to load image file.
+            if (args.Length == 2) loadImage(args[0]);   
+            else
+            {
+                Console.WriteLine("Invalid number of arguments. \nPlease follow the format: maze.exe \"source.[bmp,png,jpg]\" \"destination.[bmp,png,jpg]\"");
+                Environment.Exit(1);
+            }
+
+            Console.WriteLine("Image size: " + image.PhysicalDimension);  
             Node start = findColorCenter(Color.FromArgb(255, 255, 0, 0));
             Node goal = findColorCenter(Color.FromArgb(255, 0, 0, 255));
 
             if (start == null) Console.WriteLine("Unable to find Start Location.");
             else if (goal == null) Console.WriteLine("Unable to find Goal Location.");
-            else if (findPathWaveFront(start, goal) == true) Console.WriteLine("Maze Solved!");
+            else if (algorithmChoose(start, goal) == true) Console.WriteLine("Maze Solved!");
             else Console.WriteLine("Maze not Solved.");
 
-            clearTracers();
-            image.Save(Environment.CurrentDirectory + @"\solved-mazes\maze1solved.png");
-            Console.WriteLine("Press any key to exit...");
+            timer.Stop();
+            TimeSpan timespan = timer.Elapsed;
+            Console.WriteLine(String.Format(String.Format("{0:00}:{1:00}:{2:00} (in Minutes, Seconds, ms)", timespan.Minutes, timespan.Seconds, timespan.Milliseconds / 10)));
+
+            clearTracers();     
+            saveImage(args[1]);
+            Console.WriteLine("Press Enter key to exit...");
             Console.ReadLine();
+        }
+
+        static void loadImage(String imageName)
+        {
+            try
+            {
+                path = Environment.CurrentDirectory + @"\input-mazes\" + imageName;
+                image = new Bitmap(path, true);
+                gManipulator = Graphics.FromImage(image);
+            }
+            catch (Exception ex)
+            {
+                Console.Write("Source image is corrupt, unreadable, or nonexistent.");
+                Environment.Exit(1);
+            }
+        }
+
+        static void saveImage(String imageName)
+        {
+            if(imageName.Contains(".png")
+                || imageName.Contains(".jpg")
+                || imageName.Contains(".bmp")) image.Save(Environment.CurrentDirectory + @"\solved-mazes\" + imageName);
+            else image.Save(Environment.CurrentDirectory + @"\solved-mazes\" + imageName + ".png");
+        }
+
+        static bool algorithmChoose(Node start, Node target)
+        {
+            Console.WriteLine("Would you like to use: \n1) Wavefront Propagation (Faster) \n2) A star Algorithm to solve the maze?");
+            int input;
+            bool solved;
+             
+            if (int.TryParse(Console.ReadLine(), out input))
+            {
+                if (input == 1)
+                {
+                    timer = Stopwatch.StartNew();
+                    solved = findPathWaveFront(start, target);
+                }
+                else if (input == 2)
+                {
+                    timer = Stopwatch.StartNew();
+                    solved = findPathAStar(start, target);
+                }
+                else
+                {
+                    Console.WriteLine("Please provide valid input.");
+                    solved = algorithmChoose(start, target);
+                }
+            }
+            else
+            {
+                Console.WriteLine("Please provide valid input.");
+                solved = algorithmChoose(start, target);
+            }
+
+            return solved;
         }
 
         static Node findColorCenter(Color color)
@@ -117,7 +186,6 @@ namespace Maze_Solver
                     }
                 }
                 frontier.Remove(current);
-                Console.WriteLine(current.fValue());
                 
                 //If at goal
                 if (image.GetPixel(current.point.X, current.point.Y) == Color.FromArgb(255,0,0,255))
@@ -231,14 +299,20 @@ namespace Maze_Solver
         //Clears the purple pixels from the map.
         static void clearTracers()
         {
-            Console.WriteLine("Clearing Tracers...");
-            for (int i = 0; i < image.Width; i++)
+            Console.WriteLine("Clear propagation tracers? (Input 'Y' to clear purple map tracers.)");
+            String input;
+            input = Console.ReadLine();
+            if (input.ToUpper().Contains("Y"))
             {
-                for (int j = 0; j < image.Height; j++)
+                Console.WriteLine("Clearing Tracers...");
+                for (int i = 0; i < image.Width; i++)
                 {
-                    if (image.GetPixel(i, j) == Color.FromArgb(255, 255, 0, 255))
+                    for (int j = 0; j < image.Height; j++)
                     {
-                        image.SetPixel(i, j, Color.FromArgb(255, 255, 255, 255));
+                        if (image.GetPixel(i, j) == Color.FromArgb(255, 255, 0, 255))
+                        {
+                            image.SetPixel(i, j, Color.FromArgb(255, 255, 255, 255));
+                        }
                     }
                 }
             }
