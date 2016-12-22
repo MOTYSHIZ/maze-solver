@@ -1,8 +1,21 @@
 ﻿/** Author: Justin Ordonez 
  * 
  * This is a maze-solving program that solves images taken in as jpgs, bmps, or pngs.
+ * It utilizes either Wavefront Propagation (Concurrent Djikstra) or A* Pathfinding Algorithm, 
+ * depending on user input.
  * 
- * **/
+ * Maze input files are taken from the folder /input-mazes/, and solved mazes are written to /solved-mazes/.
+ * The /temp-conversions/ folder holds bitmap conversions for if an indexed pixel-format .bmp file is set as
+ * an input maze.
+ * 
+ * The image rules are as follows:
+ * 1) Maze starts at red.
+ * 2) Maze finishes at blue.
+ * 3) All walls are black.
+ * 4) Maze is completely surrounded by black walls.
+ * 5) The maze solution will be drawn in green.
+ * 
+ **/
 
 using System;
 using System.IO;
@@ -18,8 +31,12 @@ namespace Maze_Solver
         private static Bitmap image;
         private static Graphics gManipulator;
         private static Pen greenPen = new Pen(Color.Green, 2);
+
+        /*The blocksize is essentially the amount of pixels that each algorithm can skip over during each
+        * evaluation cycle. This optimization makes it so that not every pixel needs to be evaluated, and
+        * thus greatly improves the speed of each algorithm. */
         private static int blockSize = 0;
-        private const int THRESHOLD = 100;
+        private const int COLOR_THRESHOLD = 100;
         private static Stopwatch timer;
 
         static void Main(string[] args)
@@ -33,12 +50,12 @@ namespace Maze_Solver
             }
 
             //Look for start and goal positions after printing to console the image size.
-            Console.WriteLine("Image size: " + image.PhysicalDimension);  
+            Console.WriteLine("Image name: " + args[0] + "\nImage size: " + image.PhysicalDimension);  
             Node start = findColorCenter(Color.FromArgb(255, 255, 0, 0));
             Node goal = findColorCenter(Color.FromArgb(255, 0, 0, 175));
 
-            //Check if start and goal positions were found. Then ask user what algorithm they want to use.
-            //If the goal state could not be found, inform user that maze is not solved.
+            /*Check if start and goal positions were found. Then ask user what algorithm they want to use.
+            * If the goal state could not be found, inform user that maze is not solved. */
             if (start == null)
             {
                 Console.WriteLine("Unable to find Start Location.");
@@ -123,9 +140,9 @@ namespace Maze_Solver
          * RGB channels and seeing if they fit within a certain threshold. */
         static bool colorEquals(Color c1, Color c2)
         {
-            if (Math.Abs(c1.R - c2.R) <= THRESHOLD
-                && Math.Abs(c1.G - c2.G) <= THRESHOLD
-                && Math.Abs(c1.B - c2.B) <= THRESHOLD) return true;
+            if (Math.Abs(c1.R - c2.R) <= COLOR_THRESHOLD
+                && Math.Abs(c1.G - c2.G) <= COLOR_THRESHOLD
+                && Math.Abs(c1.B - c2.B) <= COLOR_THRESHOLD) return true;
 
             return false;
         }
@@ -134,14 +151,21 @@ namespace Maze_Solver
          * the name, it is assigned the PNG format. */
         static void saveImage(String imageName)
         {
-            if (imageName.Contains(".png")
-                || imageName.Contains(".jpg")
-                || imageName.Contains(".bmp")) image.Save(Environment.CurrentDirectory + @"\solved-mazes\" + imageName);
-            else image.Save(Environment.CurrentDirectory + @"\solved-mazes\" + imageName + ".png");
+            String path = Environment.CurrentDirectory + @"\solved-mazes\" + imageName;
+
+            if (imageName.Contains(".png") || imageName.Contains(".jpg") || imageName.Contains(".bmp"))
+            {
+                image.Save(path);
+                Console.WriteLine("Saving solved maze to " + Environment.CurrentDirectory + @"\solved-mazes\" + imageName);
+            }
+            else
+            {
+                image.Save(Environment.CurrentDirectory + @"\solved-mazes\" + imageName + ".png");
+                Console.WriteLine("Saving solved maze to " + path + ".png");
+            }
         }
 
-        // Handles user input to determine which search algorithm to use.
-        // If input is neither 1 or 2, requests valid input.
+        /* Handles user input to determine which search algorithm to use. If input is neither 1 or 2, requests valid input. */
         static bool algorithmChoose(Node start, Node target)
         {
             Console.WriteLine("Would you like to use: \n1) Wavefront Propagation (Faster for large mazes.) \n2) A-Star Algorithm to solve the maze?");
@@ -160,13 +184,13 @@ namespace Maze_Solver
                     timer = Stopwatch.StartNew();
                     solved = findPathAStar(start, target);
                 }
-                else
+                else  //Handle ints that are not 1 or 2.
                 {
                     Console.WriteLine("Please provide valid input.");
                     solved = algorithmChoose(start, target);
                 }
             }
-            else
+            else  //Inputs that are not ints.
             {
                 Console.WriteLine("Please provide valid input.");
                 solved = algorithmChoose(start, target);
@@ -180,9 +204,9 @@ namespace Maze_Solver
         {
             Node coord = new Node(0, 0);
 
-            //Loop through every pixel of the image, looking for given color.
-            //When first pixel of the given block of color is found, call findBlockSize to find its width.
-            //Returns the center point of the color block.
+            /*Loop through every pixel of the image, looking for given color.
+            * When first pixel of the given block of color is found, call findBlockSize to find its width.
+            * Returns the center point of the color block. */
             for (int x = 0; x < image.Width; x++)
             {
                 for (int y = 0; y < image.Height; y++)
@@ -201,8 +225,8 @@ namespace Maze_Solver
             return null;
         }
 
-        //Finds the block size by taking a starting pixel and iterating while counting through
-        //subsequent pixels until the current pixel is no longer the red starting point color.
+        /*Finds the block size by taking a starting pixel and iterating while counting through
+        * subsequent pixels until the current pixel is no longer the red starting point color. */
         static void findBlockSize(int currX, int currY)
         {
             while(colorEquals(image.GetPixel(currX, currY) , Color.FromArgb(255, 155, 0, 0)))
@@ -213,11 +237,11 @@ namespace Maze_Solver
             Console.WriteLine("block size = " + blockSize);
         }
 
-        //Pathfinding function that uses WaveFront algorithm, which is essentially a concurrent 
-        //form of Djikstra's pathfinding algorithm.
+        /*Pathfinding function that uses WaveFront algorithm, which is essentially a concurrent 
+        * form of Djikstra's pathfinding algorithm. */
         static bool findPathWaveFront(Node start, Node target) {
-            //These lists actually behave more like two frontiers, since they are essentially two
-            //layers on  the wavefront.
+            /*These lists actually behave more like two frontiers, since they are essentially two
+            * layers at the wavefront. */
             List<Node> frontier = new List<Node>();
             List<Node> explored = new List<Node>();
 
@@ -227,9 +251,9 @@ namespace Maze_Solver
 
             do
             {
-                //Clears the explored set, unless it is only the starting point. This is done because the frontier
-                //will become the new explored set, and there is no need to keep track of the center nodes.
-                //All visited points are colored on the map in purple, so the majority do not need to be tracked in a list.
+                /*Clears the explored set, unless it is only the starting point. This is done because the frontier
+                * will become the new explored set, and there is no need to keep track of the center nodes.
+                * All visited points are colored on the map in purple, so the majority do not need to be tracked in a list. */
                 if(explored.Count > 1)explored.Clear();
                 explored.AddRange(frontier);        // Explored set because the former frontier
                 frontier.Clear();                   // Frontier cleared to become new wavefront.
@@ -271,9 +295,9 @@ namespace Maze_Solver
 
             while (frontier.Count > 0)
             {
-                //Grab the smallest fvalue Node in the frontier. If two values are equal, their hvalues are compared.
-                //For most cases, the frontier doesn't get unnecessarily large, so a heap implementation's 
-                //performance gains were actually negligible when tested.
+                /*Grab the smallest fvalue Node in the frontier. If two values are equal, their hvalues are compared.
+                * For most cases, the frontier doesn't get unnecessarily large, so a heap implementation's 
+                * performance gains were actually negligible when tested. */
                 Node current = frontier[0];
                 for (int i = 1; i < frontier.Count; i++)
                 {
@@ -298,15 +322,15 @@ namespace Maze_Solver
 
                 foreach (Node neighbor in getNeighbors(current))
                 {
-                    //Performance drops from frontier.Contains are negligible because the frontier size
-                    //is kept relatively small by checks made in the getNeighbors function.
-                    //If the current neighbor node exists in the frontier, it is skipped over.
+                    /*Performance drops from frontier.Contains are negligible because the frontier size
+                    * is kept relatively small by checks made in the getNeighbors function.
+                    * If the current neighbor node exists in the frontier, it is skipped over. */
                     bool frontierContains = frontier.Contains(neighbor);
                     if (frontierContains) continue;
 
-                    //Check if the neighbor node is existent in the frontier or if the evaluated cost of a neighbor node is 
-                    //less than a cost evaluated for the node previously. If so, either evaluate and add to the frontier
-                    //or only update the nodes values if it is already in the frontier. 
+                    /*Check if the neighbor node is existent in the frontier or if the evaluated cost of a neighbor node is 
+                    * less than a cost evaluated for the node previously. If so, either evaluate and add to the frontier
+                    * or only update the nodes values if it is already in the frontier. */ 
                     int newMovementCostToNeighbor = current.gValue + findDistance(current, neighbor);
                     if(newMovementCostToNeighbor < neighbor.gValue || !frontierContains)
                     {
@@ -365,8 +389,8 @@ namespace Maze_Solver
                 //If encounted a wall or black pixel, return false to indicate that the direction is not clear.
                 if (colorEquals(image.GetPixel(currX, currY), Color.FromArgb(255,0,0,0))) return false;
                                 
-                //Handles diagonal cases where the diagonal pixel is clear, but not its adjacents.
-                //Prior to this, non-orthogonal mazes would have issues with the path seemingly running through walls.
+                /*Handles diagonal cases where the diagonal pixel is clear, but not its adjacents.
+                * Prior to this, non-orthogonal mazes would have issues with the path running through walls. */
                 if(expandX != 0 && expandY != 0
                     && currX + expandX >= 0 && currX + expandX < image.Width 
                     && currY + expandY >= 0 && currY + expandY < image.Width)
@@ -417,8 +441,8 @@ namespace Maze_Solver
             gManipulator.DrawLines(greenPen, nodes);
         }
 
-        //Clears the purple propagation tracers from the map. The tracers are great for debugging, and 
-        //they improve performance greatly. 
+        /*Clears the purple propagation tracers from the map. The tracers are great for debugging, and 
+        * they improve performance greatly. */ 
         static void clearTracers()
         {
             //Check if user wants the tracers removed.
